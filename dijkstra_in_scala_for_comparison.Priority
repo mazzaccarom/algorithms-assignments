@@ -1,0 +1,77 @@
+import scala.collection.mutable.PriorityQueue
+import scala.io.Source
+
+object Main {
+  val INF = Int.MaxValue
+
+
+  def adjMatFromFile(filename: String): Array[Array[Int]] = {
+    val lines = Source.fromFile(filename).getLines
+    val nVerts = lines.next().toInt
+    println(s" n_verts = $nVerts")
+    val adjMat = Array.fill(nVerts, nVerts)(INF)
+    for (i <- 0 until nVerts) adjMat(i)(i) = 0
+    for (line <- lines) {
+      val intList = line.split("\\s+").map(_.toInt).toList
+      val vert = intList.head
+      val neighborsDistances = intList.tail
+      assert(neighborsDistances.length % 2 == 0)
+      neighborsDistances.grouped(2).foreach {
+        case List(neighbor, distance) => adjMat(vert)(neighbor) = distance
+      }
+    }
+    adjMat
+  }
+
+
+  def printAdjMat(mat: Array[Array[Int]], width: Int = 3): Unit = {
+    val header = "     " + mat.indices.map(v => f"$v%3d").mkString(" ") + "\n"
+    val separator = "    " + "-" * ((width + 1) * mat.length) + "\n"
+    val content = mat.indices.map { i =>
+      val row = mat(i).map(elem => if (elem < INF) f"$elem%3d" else " 999").mkString(" ")
+      f"$i%3d |$row%n"
+    }.mkString
+    print(header + separator + content)
+  }
+
+
+  def dijkstraWPriQueue(W: Array[Array[Int]], sv: Int): (Array[Int], Double) = {
+    val D = Array.fill(W.length)(INF)
+    D(sv) = 0
+    val pq = PriorityQueue.empty[(Int, Int)](Ordering.by((t: (Int, Int)) => t._1).reverse)
+    pq.enqueue((0, sv))
+
+    val startTime = System.nanoTime()
+
+    while (pq.nonEmpty) {
+      val (currDistance, currVertex) = pq.dequeue()
+      if (currDistance <= D(currVertex)) {
+        for (vertex <- W(currVertex).indices) {
+          val weight = W(currVertex)(vertex)
+          if (weight != INF) {
+            val newDistance = D(currVertex) + weight
+            if (newDistance < D(vertex)) {
+              D(vertex) = newDistance
+              pq.enqueue((newDistance, vertex))
+            }
+          }
+        }
+      }
+    }
+
+    val elapsedTime = (System.nanoTime() - startTime) / 1000000000.0
+
+    (D, elapsedTime)
+  }
+
+  
+
+  def main(args: Array[String]): Unit = {
+    val g = adjMatFromFile("py_vs_X_assign3.txt")
+
+    // Run Dijkstra's using a pri queue for a single starting vertex, v2
+    val startVert = 2
+    val (resDijkstraPriQueue, elapsedTimeDijkstraPriQueue) = dijkstraWPriQueue(g, startVert)
+    println(f"  Dijkstra's w/ pri queue elapsed time (single starts): $elapsedTimeDijkstraPriQueue%.2f")
+  }
+}
